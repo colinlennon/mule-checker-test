@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="4bca969f-04b5-497c-96ce-4a7afd243ce0" basePath="/fcb2b37b-5da0-466b-9b83-0014b67a7c78" >
+		<http:request-connection protocol="HTTPS" host="login.microsoftonline.com" port="443" />
+	</http:request-config>
+	<flow name="set-token-variable-flow" doc:id="4dcfeaad-1d7d-45e2-8024-2462b0646003" >
+		<set-variable value="#[authentication.properties.jwt]" doc:name="token" doc:id="f1622917-13b1-4136-8fd7-d709ccb90688" variableName="token"/>
+	</flow>
+	<flow name="get-exchange-token-flow" doc:id="58a04050-88ea-4eec-a943-d955ff589fef" >
+		<json-logger:logger-scope doc:name="Logger scope" doc:id="a9cee6ea-5fbc-4462-9d35-6d048576d10f" configurationRef="JSON_Logger_Config">
+			<http:request method="POST" doc:name="Request-exchange-token" doc:id="8e926e59-308d-4b2f-aff6-d2bec0234910" config-ref="HTTP_Request_configuration" path="/oauth2/v2.0/token" targetValue="#[payload.access_token]" target="exchangeToken">
+			<http:body><![CDATA[#[output application/x-www-form-urlencoded 
+---
+{ grant_type : "urn:ietf:params:oauth:grant-type:jwt-bearer", 
+       requested_token_use : "on_behalf_of", 
+       scope: p('auth.scope'),
+       assertion : vars.token, 
+       client_secret : p('secure::auth.client_secret'), 
+       client_id : p('auth.client_id')
+       }]]]></http:body>
+		</http:request>
+		</json-logger:logger-scope>
+	</flow>
+</mule>

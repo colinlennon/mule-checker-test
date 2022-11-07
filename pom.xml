@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<!-- Parent-Pom(and Bom) from Your Artifacts Repo -->
+	<parent>
+		<groupId>f8930ae6-825b-4142-849e-6ad31a5ea504</groupId>
+		<artifactId>dtef-parent-pom</artifactId>
+		<version>0.0.8</version>
+	</parent>
+
+	<!-- TODO: Replace this with com.{mycompany} -->
+	<groupId>f8930ae6-825b-4142-849e-6ad31a5ea504</groupId>
+	<artifactId>mule-checker-test-impl</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>mule-application</packaging>
+
+	<name>mule-checker-test</name>
+	<description/>
+	<properties>
+		<maven.dependency.plugin.version>3.1.1</maven.dependency.plugin.version>
+		<maven.compiler.plugin.version>3.7.0</maven.compiler.plugin.version>
+		<error.handler.library.version>1.0.3</error.handler.library.version>
+		<tags/>
+		<categories>[]</categories>
+	</properties>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.mule.tools.maven</groupId>
+				<artifactId>mule-maven-plugin</artifactId>
+				<version>${mule.maven.plugin.version}</version>
+				<extensions>true</extensions>
+				<configuration>
+					<classifier>mule-application</classifier>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>com.mulesoft.munit.tools</groupId>
+				<artifactId>munit-maven-plugin</artifactId>
+				<version>${munit.version}</version>
+				<executions>
+					<execution>
+						<id>test</id>
+						<phase>test</phase>
+						<goals>
+							<goal>test</goal>
+							<goal>coverage-report</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<runtimeVersion>${app.runtime}</runtimeVersion>
+					<runtimeProduct>MULE_EE</runtimeProduct>
+					<environmentVariables>
+						<encrypt.key>${encrypt.key}</encrypt.key>
+					</environmentVariables>
+					<coverage>
+						<runCoverage>true</runCoverage>
+						<formats>
+							<format>console</format>
+							<format>html</format>
+							<format>json</format>
+						</formats>
+					</coverage>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>${maven.compiler.plugin.version}</version>
+				<configuration>
+					<compilerArgs>
+						<args>-parameters</args>
+					</compilerArgs>
+					<target>1.8</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>${maven.dependency.plugin.version}</version>
+				<executions>
+					<execution>
+						<id>unpack</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>unpack</goal>
+						</goals>
+						<configuration>
+							<artifactItems>
+								<artifactItem>
+									<!--	TODO: Replace with the Published error-handling artifact library details -->
+									<groupId>${project.groupId}</groupId>
+									<artifactId>error-handler-library</artifactId>
+									<version>${error.handler.library.version}</version>
+									<!-- *************************************************** -->
+									<classifier>mule-application</classifier>
+									<overWrite>true</overWrite>
+									<outputDirectory>src/main/mule/</outputDirectory>
+									<includes>**/error-*.xml</includes>
+								</artifactItem>
+								<artifactItem>
+									<!-- TODO: Replace with the Published error-handling artifact library details -->
+									<groupId>${project.groupId}</groupId>
+									<artifactId>error-handler-library</artifactId>
+									<version>${error.handler.library.version}</version>
+									<!-- *************************************************** -->
+									<classifier>mule-application</classifier>
+									<overWrite>true</overWrite>
+									<outputDirectory>src/main/resources/</outputDirectory>
+									<includes>**/error-*.yaml</includes>
+								</artifactItem>
+							</artifactItems>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+	<dependencies>
+		<dependency>
+			<groupId>org.mule.connectors</groupId>
+			<artifactId>mule-http-connector</artifactId>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+		<!-- PLACEHOLDER-FOR-AUTOMATION: apikit dependency -->
+		<dependency>
+			<groupId>org.mule.modules</groupId>
+			<artifactId>mule-apikit-module</artifactId>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+		<dependency>
+			<groupId>com.mulesoft.modules</groupId>
+			<artifactId>mule-secure-configuration-property-module</artifactId>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+		<dependency>
+			<groupId>org.mule.modules</groupId>
+			<artifactId>mule-validation-module</artifactId>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+		<dependency>
+			<groupId>org.mule.connectors</groupId>
+			<artifactId>mule-sockets-connector</artifactId>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+		<dependency>
+			<groupId>org.mule.module</groupId>
+			<artifactId>mule-java-module</artifactId>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+
+		<!-- Connectors -->
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>json-logger</artifactId>
+			<version>${json.logger.ver}</version>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+
+		<!-- MUNIT -->
+		<dependency>
+			<groupId>com.mulesoft.munit</groupId>
+			<artifactId>munit-runner</artifactId>
+			<classifier>mule-plugin</classifier>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.mulesoft.munit</groupId>
+			<artifactId>munit-tools</artifactId>
+			<classifier>mule-plugin</classifier>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>f8930ae6-825b-4142-849e-6ad31a5ea504</groupId>
+			<artifactId>mule-checker-test</artifactId>
+			<version>1.0.0</version>
+			<classifier>raml</classifier>
+			<type>zip</type>
+		</dependency>
+
+	</dependencies>
+
+	<!-- TODO: Remove this repository and replace with artifact repository where Parent-POM files are published-->
+	<repositories>
+		<repository>
+			<id>anypoint-exchange-v3</id>
+			<name>Anypoint Exchange V3</name>
+			<url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
+			<layout>default</layout>
+		</repository>
+	</repositories>
+	<distributionManagement>
+		<repository>
+			<id>anypoint-exchange-v3</id>
+			<name>Corporate Repository</name>
+			<url>https://maven.anypoint.mulesoft.com/api/v3/organizations/${project.groupId}/maven</url>
+			<layout>default</layout>
+		</repository>
+	</distributionManagement>
+
+</project>

@@ -1,0 +1,206 @@
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: RTF Deployment
+
+on:
+  push: # won't be triggered if you add any of the following strings to the commit message in a push [skip ci]
+      branches-ignore:    
+      - '**-NoCICD'
+      paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+  workflow_dispatch: #this line is put here if you want to trigger pipeline manually
+
+
+env: #below lines will set environments variable whenever pipeline run and this parameter are used to pass values in settings.xml
+  business_group_id: f8930ae6-825b-4142-849e-6ad31a5ea504
+  application_name: mule-checker-test
+  app_port: 8081
+  api_layer: process
+  http_proxyHost: 10.185.190.10
+  http_proxyPort: 8080
+  http_proxyUser: MVWFX
+  http_proxyPassword: ${{ secrets.HTTP_PROXY_PASSWORD }}
+  https_proxyHost: 10.185.190.10
+  https_proxyPort: 8080
+  http_nonProxyHosts: localhost|*.svc.cluster.local|*.monitoring.svc.cluster.local|*bayer.cnb
+  useProxySelector: false
+  useProxyProperties: true
+  lastMileSecurity: true
+  
+jobs:
+  build_deploy_nonprod: #this line define the job    
+    name: build, run MUnit, publish to exchange and deploy to nonprod
+    if: ${{ github.ref != 'refs/heads/main'}}
+    environment: NonProd
+    runs-on: [ ubuntu-latest ]  # this line we have to given runner tag on which we want to run our pipeline
+    env:
+      rtf_environment: GFI-NonProd
+      rtf_target: azure-connect-eu-west-np
+      environment: nonprod
+      publicUrl: https://np.api.eu04w.bayer.com/mule-checker-test
+    
+    steps:
+    - name: Checking out repository on runner 
+      uses: actions/checkout@v2
+      
+    - name: Setup Java JDK
+      uses: actions/setup-java@v3.3.0
+      with:
+       distribution: 'temurin'
+       java-version: '11'
+       
+    - name: Set up Maven
+      uses: stCarolas/setup-maven@v4.3
+      with:
+        maven-version: 3.8.2
+        
+    - name: Setup Maven Settings
+      uses: s4u/maven-settings-action@v2.6.0
+      with:
+         servers: |
+          [{
+              "id": "anypoint-exchange-v3",
+              "username": "~~~Client~~~",
+              "password": "${{ secrets.EXCHANGE_CA_CLIENT_ID }}~?~${{ secrets.EXCHANGE_CA_CLIENT_SECRET }}"
+          },
+          {
+              "id": "mulesoft-releases-ee",
+              "username": "${{ secrets.RELEASES_EE_USERNAME }}",
+              "password": "${{ secrets.RELEASES_EE_PASSWORD }}"
+          }]
+          
+    - name: Cache local Maven repository
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+          
+    - name: Build code and Uploading Jar to Exchange   #this step will build the jar and upload jar to exchange if it is a feature branch (all branches except the main branch are feature branches)
+      run: mvn clean package deploy
+      
+    - name: Create tag to source code # to get connection of source code version in pom.xml with the build jar file in Exchange
+      id: check-version
+      run: |
+       POM_VERSION=$(mvn org.apache.maven.plugins:maven-help-plugin:3.2.0:evaluate -Dexpression=project.version -q -DforceStdout)
+       echo "POM_VERSION: $POM_VERSION"
+       if (grep -vq "SNAPSHOT" <<< "$POM_VERSION"); #only add tag if the pom.xml version does not include -SNAPSHOT
+       then
+          git tag $POM_VERSION
+          git push origin --tags       
+        fi
+       
+    - name: Deploy to NonProd #this step will deploy jar to runtime manager and we are passing required values through github secretes along with maven command
+      run: > 
+          mvn mule:deploy 
+          -Dmule.artifact="/path"
+          -DconnectedAppClientId=${{ secrets.RTF_CA_CLIENT_ID }} 
+          -DconnectedAppClientSecret=${{ secrets.RTF_CA_CLIENT_SECRET }} 
+          -DbusinessGroupId=$business_group_id 
+          -Danypoint_platform_client_id=${{ secrets.AP_CLIENT_ID }} 
+          -Danypoint_platform_client_secret=${{ secrets.AP_CLIENT_SECRET }} 
+          -Drtf_environment=$rtf_environment 
+          -DapplicationName=$application_name 
+          -Drtf_target="$rtf_target" 
+          -Denvironment="$environment" 
+          -Dapp_port="8081" 
+          -Dencrypt_key="${{ secrets.ENCRYPTION_KEY_NONPROD }}"
+          -Danypoint_platform_visualizer_layer="$api_layer"
+          -Dhttp_proxyHost=$http_proxyHost
+          -Dhttp_proxyPort=$http_proxyPort
+          -Dhttp_proxyUser=$http_proxyUser
+          -Dhttps_proxyHost=$https_proxyHost
+          -Dhttps_proxyPort=$https_proxyPort
+          -Dhttp_nonProxyHosts=$http_nonProxyHosts
+          -Dhttp_proxyPassword=$http_proxyPassword
+          -DuseProxySelector=$useProxySelector
+          -DuseProxyProperties=$useProxyProperties
+          -DlastMileSecurity=$lastMileSecurity
+          -DpublicUrl=$publicUrl
+      
+  deploy_prod: #this line define the job    
+    name: deploy to prod
+    if: ${{ github.ref == 'refs/heads/main'}}
+    environment: Prod
+    #needs: build_deploy_nonprod      #this line used to make this job run only if build job is successfull.
+    runs-on: [ ubuntu-latest ]  # this line we have to given runner tag on which we want to run our pipeline
+    env:
+      rtf_environment: GFI-Production
+      rtf_target: azure-connect-eu-west-prod
+      environment: prod 
+      publicUrl: https://api.eu04w.bayer.com/mule-checker-test
+      
+    steps:
+    - name: Checking out repository on runner 
+      uses: actions/checkout@v2
+      
+    - name: Setup Java JDK
+      uses: actions/setup-java@v3.3.0
+      with:
+       distribution: 'temurin'
+       java-version: '11'
+       
+    - name: Set up Maven
+      uses: stCarolas/setup-maven@v4.3
+      with:
+        maven-version: 3.8.2
+        
+    - name: Setup Maven Settings
+      uses: s4u/maven-settings-action@v2.6.0
+      with:
+         servers: |
+          [{
+              "id": "anypoint-exchange-v3",
+              "username": "~~~Client~~~",
+              "password": "${{ secrets.EXCHANGE_CA_CLIENT_ID }}~?~${{ secrets.EXCHANGE_CA_CLIENT_SECRET }}"
+          },
+          {
+              "id": "mulesoft-releases-ee",
+              "username": "${{ secrets.RELEASES_EE_USERNAME }}",
+              "password": "${{ secrets.RELEASES_EE_PASSWORD }}"
+          }]
+    - name: Cache local Maven repository
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+          
+    - name: Deploy to Prod #this step will deploy jar to runtime manager and we are passing required values through github secretes along with maven command
+      run: > 
+          mvn mule:deploy 
+          -Dmule.artifact="/path"
+          -DconnectedAppClientId=${{ secrets.RTF_CA_CLIENT_ID }} 
+          -DconnectedAppClientSecret=${{ secrets.RTF_CA_CLIENT_SECRET }} 
+          -DbusinessGroupId=$business_group_id 
+          -Danypoint_platform_client_id=${{ secrets.AP_CLIENT_ID }} 
+          -Danypoint_platform_client_secret=${{ secrets.AP_CLIENT_SECRET }} 
+          -Drtf_environment=$rtf_environment 
+          -DapplicationName=$application_name 
+          -Drtf_target="$rtf_target" 
+          -Denvironment="$environment" 
+          -Dapp_port="8081" 
+          -Dencrypt_key="${{ secrets.ENCRYPTION_KEY_PROD }}"
+          -Danypoint_platform_visualizer_layer="$api_layer"
+          -Dhttp_proxyHost=$http_proxyHost
+          -Dhttp_proxyPort=$http_proxyPort
+          -Dhttp_proxyUser=$http_proxyUser
+          -Dhttps_proxyHost=$https_proxyHost
+          -Dhttps_proxyPort=$https_proxyPort
+          -Dhttp_nonProxyHosts=$http_nonProxyHosts
+          -Dhttp_proxyPassword=$http_proxyPassword
+          -DuseProxySelector=$useProxySelector
+          -DuseProxyProperties=$useProxyProperties
+          -DlastMileSecurity=$lastMileSecurity
+          -DpublicUrl=$publicUrl   
+          
+    - name: Publish Jar to Github Artifact     #this step will upload jar to github artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: Mule-RTF
+        path: ${{ github.workspace }}/target/*.jar
+        

@@ -1,0 +1,24 @@
+api:
+  id:           "00000000"
+
+tls.keystore:
+  type:         "jks"  
+  path:         "cert/keystore_nonprod.jks"
+  alias:        "bayerdtef" 
+
+tls.truststore:
+  type:         "jks"  
+  path:         "cert/truststore_nonprod.jks"
+
+correlation:
+  impose: "true"
+
+logger.prettyPrint: "true" 
+
+app:
+  port: "8079" 
+  host: "localhost"
+
+auth:
+  client_id: "<<auth_client_id>>" # for example: 107f14e2-9f99-4ebd-987e-5f30b306af0d
+  scope: "<<auth_scope>>" # for example: https://bayer.com/emda-foreign-exchange-rates-papi-np/.default

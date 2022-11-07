@@ -1,0 +1,71 @@
+# This workflow is only used to prevent pull requests to merge to main when the pom.xml version is set to SNAPSHOT.
+
+name: version-status-check
+
+on:
+  pull_request:
+      branches:    
+      - main
+      paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+  
+jobs:
+  version-status-check:
+    name: Check version
+    runs-on: [ ubuntu-latest ]
+    
+    steps:
+    - name: Checking out repository on runner 
+      uses: actions/checkout@v2
+      
+    - name: Setup Java JDK
+      uses: actions/setup-java@v3.3.0
+      with:
+       distribution: 'temurin'
+       java-version: '11'
+       
+    - name: Set up Maven
+      uses: stCarolas/setup-maven@v4.3
+      with:
+        maven-version: 3.8.2
+        
+    - name: Setup Maven Settings
+      uses: s4u/maven-settings-action@v2.6.0
+      with:
+         servers: |
+          [{
+              "id": "anypoint-exchange-v3",
+              "username": "~~~Client~~~",
+              "password": "${{ secrets.EXCHANGE_CA_CLIENT_ID }}~?~${{ secrets.EXCHANGE_CA_CLIENT_SECRET }}"
+          },
+          {
+              "id": "mulesoft-releases-ee",
+              "username": "${{ secrets.RELEASES_EE_USERNAME }}",
+              "password": "${{ secrets.RELEASES_EE_PASSWORD }}"
+          }]
+      
+    - name: Check pom.xml version for SNAPSHOT
+      id: check-version
+      run: |
+       POM_VERSION=$(mvn org.apache.maven.plugins:maven-help-plugin:3.2.0:evaluate -Dexpression=project.version -q -DforceStdout)
+       echo "POM_VERSION: $POM_VERSION"
+       if (grep -q "SNAPSHOT" <<< "$POM_VERSION");
+       then
+          echo "SNAPSHOT version detected."
+          echo "state=failure" >> $GITHUB_OUTPUT
+          echo "description=SNAPSHOT version in pom.xml detected. You cannot deploy this to production." >> $GITHUB_OUTPUT
+        else
+          echo "No SNAPSHOT found in version."
+          echo "state=success" >> $GITHUB_OUTPUT
+          echo "description=Version in pom.xml is not a SNAPSHOT." >> $GITHUB_OUTPUT
+        fi
+       
+    - name: version-status-check
+      uses: Sibz/github-status-action@v1
+      with: 
+        authToken: ${{secrets.GITHUB_TOKEN}}
+        context: 'version-status-check'
+        description: ${{ steps.check-version.outputs.description }}
+        state: ${{ steps.check-version.outputs.state }}
+        sha: ${{github.event.pull_request.head.sha || github.sha}}

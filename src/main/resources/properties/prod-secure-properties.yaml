@@ -1,0 +1,10 @@
+tls.keystore:
+   password: "![OFdIwtG7brLmguOcnWV37qIV0wNDlSvdEV19n3J2BlU=]"
+   keyPassword: "![OFdIwtG7brLmguOcnWV37qIV0wNDlSvdEV19n3J2BlU=]"
+
+tls.truststore:
+   password:  "![pMn+uyoK2Fm4aoBVANpVumehtPBz+atbfFFcGNc6IbU=]"
+
+auth:
+  client_secret: "![<<auth_client_secret>>]" #Please change this to client_secret from AzureAD
+
