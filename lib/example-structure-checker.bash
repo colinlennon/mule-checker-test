@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 echo -e "---Starting MuleSoft Application Checks---\n"
 
 echo -e "---Application Path: $PWD---\n"
